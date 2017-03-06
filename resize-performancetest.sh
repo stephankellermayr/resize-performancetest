@@ -1,6 +1,6 @@
 #!/bin/bash
 # 
-# Performance-Test: GDAL vs. Imagemagick
+# Performance-Test: GDAL vs. ImageMagick
 #
 # TODO: Die Ziel-Bildgröße (XxY) müsste bei GDAL manuell errechnet werden.
 # Ausgehend vom Original und Hochformat/Querformat beachtend.
@@ -8,7 +8,7 @@
 #
 
 # Check arguments
-[[ -z "${1}" ]] && { echo "Bitte Bild angeben: ./test.sh INPUT.JPG"; exit; }
+[[ -z "${1}" ]] && { echo "Bitte Bild angeben: ./resize-performancetest.sh INPUT.JPG"; exit; }
 [[ -f "${1}" ]] || { echo "Bild nicht gefunden :-("; exit; }
 
 # Check programs
@@ -19,34 +19,31 @@ cmdGdalWarp=$(which gdalwarp)
 cmdConvert=$(which convert)
 [ ${cmdConvert} ] || { echo "\"convert\" nicht gefunden. Bitte mit \"apt-get install imagemagick\" installieren."; exit; }
 
-# Klassische Verkleinerung mit Imagemagick
+# Klassische verkleinerung mit ImageMagick
 function test_im() {
-	# Cleanup
-	[[ -f output-im.jpg ]] && rm output-im.jpg
-
-	# Verkleinere Foto
-	${cmdConvert} -quiet "${1}" -resize 320x213 -strip -quality 85 output-im.jpg
+	$(which convert) -quiet "${1}" -resize 320x213 -strip -quality 85 output-im.jpg
 }
 
 # Verkleinern eines Fotos mit GDAL
 function test_gdal() {
-	# Cleanup
-	[[ -f output-gdal.jpg ]] && rm output-gdal.jpg
-
 	# 1. Erzeuge intermediate mit GEO-Informationen
 	${cmdGdalTranslate} -of VRT -a_srs WGS84 -a_ullr -180 90 0 -90 "${1}" gdal.vrt >/dev/null 2>&1
 	# 2. Verkleinere das (vermeintliche) GeoTIFF
 	${cmdGdalWarp} -ts 320 213 -of GTiff -r cubic gdal.vrt gdal.tif >/dev/null 2>&1
-	# 3. Konvertiere das GEOTiff zurück ins JPG-Format
+	# 3. Konvertiere das GEOTiff zurück ins JPG-Formar
 	${cmdConvert} -quiet gdal.tif -strip -quality 85 output-gdal.jpg
-
-	# Entferne intermediates
-	[[ -f gdal.vrt ]] && rm gdal.vrt
-	[[ -f gdal.tif ]] && rm gdal.tif
 }
 
-echo -e "\nVerkleinern mit Imagemagick:"
+# Cleanup
+[[ -f output-im.jpg ]] && rm output-im.jpg
+[[ -f output-gdal.jpg ]] && rm output-gdal.jpg
+
+echo -e "\nVerkleinern mit ImageMagick:"
 time test_im "${1}"
 
 echo -e "\nVerkleinern mit GDAL:"
 time test_gdal "${1}"
+
+# Lösche intermediates
+[[ -f gdal.vrt ]] && rm gdal.vrt
+[[ -f gdal.tif ]] && rm gdal.tif
